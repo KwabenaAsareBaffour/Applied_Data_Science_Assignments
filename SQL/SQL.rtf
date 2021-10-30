@@ -1,0 +1,141 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2580
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 -- Select all the employees who were born between January 1, 1952 and December 31, 1955 and their titles and title date ranges\
+\
+select * from employees\
+Where birth_date >'1952-01-01' and birth_date < '1955-12-31';\
+\
+-- Order the results by emp_no\
+with imminent_retirees as (select * from employees \
+where to_char(birth_date, 'YYYY-MM-DD') between '1952-01-01' and '1955-12-31')\
+select imminent_retirees.emp_no, \
+		imminent_retirees.first_name,\
+		imminent_retirees.last_name,\
+		imminent_retirees.birth_date,\
+		titles.title,\
+		titles.from_date,\
+		titles.to_date\
+		from imminent_retirees join titles \
+		on imminent_retirees.emp_no=titles.emp_no\
+		order by emp_no;\
+\
+\
+select emp_no from employees\
+\
+order by emp_no;\
+\
+-- Select only the current title for each employee\
+with current_hist as (\
+with imminent_retirees as (select * from employees \
+where to_char(birth_date, 'YYYY-MM-DD') between '1952-01-01' and '1955-12-31')\
+	\
+select imminent_retirees.emp_no, \
+		imminent_retirees.first_name,\
+		imminent_retirees.last_name,\
+		imminent_retirees.birth_date,\
+		titles.title,\
+		titles.from_date,\
+		titles.to_date\
+		from imminent_retirees join titles \
+		on imminent_retirees.emp_no=titles.emp_no\
+		order by emp_no),\
+		\
+current_emp as (\
+select emp_no, max(from_date) as most_recent from titles group by emp_no)\
+\
+select current_hist.emp_no, current_hist.first_name, current_hist.last_name, current_hist.title as current_title from current_hist join current_emp on ((current_hist.emp_no=current_emp.emp_no) and (current_hist.from_date=current_emp.most_recent));\
+\
+\
+\
+-- Count the total number of employees about to retire by their current job title\
+\
+with recent_title as (\
+with current_hist as (\
+with imminent_retirees as (select * from employees \
+where to_char(birth_date, 'YYYY-MM-DD') between '1952-01-01' and '1955-12-31')\
+	\
+select imminent_retirees.emp_no, \
+		imminent_retirees.first_name,\
+		imminent_retirees.last_name,\
+		imminent_retirees.birth_date,\
+		titles.title,\
+		titles.from_date,\
+		titles.to_date\
+		from imminent_retirees join titles \
+		on imminent_retirees.emp_no=titles.emp_no\
+		order by emp_no),\
+		\
+recent_emp as (\
+select emp_no, max(from_date) as most_recent from titles group by emp_no)\
+\
+select current_hist.emp_no, current_hist.first_name, current_hist.last_name, current_hist.title as current_title from current_hist join recent_emp on ((current_hist.emp_no=recent_emp.emp_no) and (current_hist.from_date=recent_emp.most_recent)))\
+\
+select current_title, count (*) as emp_cnt from recent_title group by current_title;\
+\
+\
+-- Count the total number of employees per department\
+with count_per_dept as(\
+select dept_no, count(emp_no) as emp_cnt from dept_emp group by dept_no )\
+select dept_name, count_per_dept.emp_cnt from departments join count_per_dept on (departments.dept_no=count_per_dept.dept_no);\
+\
+\
+-- Bonus: Find the highest salary per department and department manager\
+\
+\
+--Highest salary per department\
+with current_salaries as (\
+with recent_date as(\
+with current_emp as (select emp_no, max(from_date) as from_date from dept_emp group by emp_no)\
+select current_emp.emp_no, \
+		current_emp.from_date, \
+		dept_emp.dept_no\
+		from current_emp join dept_emp \
+		on current_emp.emp_no=dept_emp.emp_no\
+			and dept_emp.from_date=current_emp.from_date)\
+			select recent_date.emp_no,\
+				   recent_date.dept_no,\
+					salaries.salary\
+					from recent_date join salaries\
+					on recent_date.emp_no=salaries.emp_no\
+					and recent_date.from_date=salaries.from_date\
+					order by emp_no)\
+		select dept_no, \
+				max(salary) as highest_salary from\
+				current_salaries\
+				group by dept_no\
+				order by dept_no \
+\
+--Highest salary per department manager\
+with manager_salaries as (\
+with current_salaries as (\
+with current_emp as( \
+select emp_no,\
+		max(from_date) as latest_appt \
+		from salaries group by emp_no)\
+select current_emp.*, \
+		salaries.salary \
+		from salaries join current_emp \
+		on salaries.emp_no=current_emp.emp_no \
+		and salaries.from_date=current_emp.latest_appt\
+		order by emp_no),\
+\
+managers as(\
+select dept_no, emp_no, from_date from dept_manager where to_date= '9999-01-01')\
+	\
+select managers.dept_no, \
+		current_salaries.emp_no, \
+		current_salaries.salary \
+		from managers join\
+		current_salaries on managers.emp_no=current_salaries.emp_no)\
+select max(salary) from manager_salaries\
+\
+\
+\
+\
+\
+}
